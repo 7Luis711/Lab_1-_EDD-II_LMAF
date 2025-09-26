@@ -41,7 +41,7 @@ if __name__ == "__main__":
         print("8. Mostrar árbol gráfico")
         print("0. Salir")
 
-        opcion = input("Seleccione: ")
+        opcion = input("Seleccione: ").strip()
 
         # 1. Recorrido por niveles (nivel raíz = 0)
         if opcion == "1":
@@ -49,7 +49,7 @@ if __name__ == "__main__":
             for iso3, mean, lvl in niveles:
                 print(f"{iso3} ({mean:.2f}) → nivel {lvl}")
 
-        # 2. Buscar nodos exactos por media
+        # 2. Buscar nodos exactos por metrica
         elif opcion == "2":
             try:
                 mean = round(float(input("Ingrese media exacta a buscar (ej. 0.61): ")), 2)
@@ -72,6 +72,8 @@ if __name__ == "__main__":
                         print("Abuelo:", g.iso3 if g else None)
                         u = tree.get_uncle(node)
                         print("Tío:", u.iso3 if u else None)
+                    else:
+                        print("⚠️ Selección inválida.")
                 else:
                     print("⚠️ No se encontró ningún nodo con esa media exacta.")
             except ValueError:
@@ -82,7 +84,8 @@ if __name__ == "__main__":
             try:
                 country = input("Ingrese nombre del país: ")
                 iso3 = input("Ingrese código ISO3: ").upper()
-                values = list(map(float, input("Ingrese valores separados por comas (ej: 1.2,2.3,3.4): ").split(",")))
+                values_input = input("Ingrese valores separados por comas (ej: 1.2,2.3,3.4): ").strip()
+                values = list(map(float, [v.strip() for v in values_input.split(",") if v.strip() != ""]))
 
                 # Crear e insertar nodo
                 node = Node(country, iso3, values)
@@ -94,9 +97,9 @@ if __name__ == "__main__":
                 draw_tree(root, "avl_tree")
                 print("Árbol actualizado y exportado a avl_tree.png")
             except ValueError:
-                print("❌ Valores inválidos.")
+                print("❌ Valores inválidos. Asegúrese de ingresar números separados por comas.")
 
-        # 4. Eliminar nodo por media
+        # 4. Eliminar nodo por metrica
         elif opcion == "4":
             try:
                 mean = round(float(input("Ingrese media a eliminar (ej. 0.61): ")), 2)
@@ -115,8 +118,8 @@ if __name__ == "__main__":
 
                         deleted_iso = node_to_delete.iso3
                         deleted_country = node_to_delete.country
-
                         key = (node_to_delete.mean, node_to_delete.iso3)
+
                         root = tree.delete_one_by_key(root, key)
                         if root:
                             root.parent = None
@@ -133,21 +136,34 @@ if __name__ == "__main__":
         elif opcion == "5":
             try:
                 year = int(input("Ingrese año: "))
-                resultados = above_year_average(year)
+                avg, resultados = above_year_average(year)
 
-                if not resultados:
-                    print("No hay países en el resultado.")
+                if avg is None:
+                    print("Año fuera de rango (1961-2022).")
                     continue
 
-                print(f"Se encontraron {len(resultados)} países (ISO3):")
+                # Mostrar promedio del año
+                print(f"📊 Promedio global del año {year}: {avg:.2f}")
+
+                if not resultados:
+                    print("No hay países por encima del promedio en ese año.")
+                    continue
+
+                print(f"Se encontraron {len(resultados)} países:")
                 for i, iso in enumerate(resultados, 1):
                     n = tree.search_by_iso(root, iso)
                     if n:
-                        print(f"{i}. {iso} - {n.country} (media={n.mean:.2f})")
+                        # Intentar obtener el valor del año en cuestión desde node.values
+                        try:
+                            year_val = n.values[year - 1961]
+                            year_val_str = f"{year_val:.2f}"
+                        except Exception:
+                            year_val_str = "N/A"
+                        print(f"{i}. {iso} - {n.country} (valor {year}={year_val_str}, media histórica={n.mean:.2f})")
                     else:
-                        print(f"{i}. {iso}")
+                        print(f"{i}. {iso} - (no presente en árbol)")
 
-                # Permite ver detalles de un país
+                # Seleccionar uno para ver detalles del nodo
                 elegir = input("¿Desea seleccionar uno para ver detalles? (s/n): ").strip().lower()
                 if elegir == "s":
                     idx = int(input("Número del país: "))
@@ -162,6 +178,8 @@ if __name__ == "__main__":
                             print("Abuelo:", g.iso3 if g else None)
                             u = tree.get_uncle(node)
                             print("Tío:", u.iso3 if u else None)
+                        else:
+                            print("El país no está en el árbol.")
             except ValueError:
                 print("Año inválido.")
 
@@ -169,21 +187,33 @@ if __name__ == "__main__":
         elif opcion == "6":
             try:
                 year = int(input("Ingrese año: "))
-                resultados = below_global_average(year)
+                global_avg, resultados = below_global_average(year)
 
-                if not resultados:
-                    print("No hay países en el resultado.")
+                if global_avg is None:
+                    print("Año fuera de rango (1961-2022).")
                     continue
 
-                print(f"Se encontraron {len(resultados)} países (ISO3):")
+                # Mostrar promedio global (todos los años)
+                print(f"📊 Promedio global de todos los años: {global_avg:.2f}")
+
+                if not resultados:
+                    print("No hay países por debajo del promedio global en ese año.")
+                    continue
+
+                print(f"Se encontraron {len(resultados)} países:")
                 for i, iso in enumerate(resultados, 1):
                     n = tree.search_by_iso(root, iso)
                     if n:
-                        print(f"{i}. {iso} - {n.country} (media={n.mean:.2f})")
+                        try:
+                            year_val = n.values[year - 1961]
+                            year_val_str = f"{year_val:.2f}"
+                        except Exception:
+                            year_val_str = "N/A"
+                        print(f"{i}. {iso} - {n.country} (valor {year}={year_val_str}, media histórica={n.mean:.2f})")
                     else:
-                        print(f"{i}. {iso}")
+                        print(f"{i}. {iso} - (no presente en árbol)")
 
-                # Permite ver detalles de un país
+                # seleccionar uno para ver detalles del nodo
                 elegir = input("¿Desea seleccionar uno para ver detalles? (s/n): ").strip().lower()
                 if elegir == "s":
                     idx = int(input("Número del país: "))
@@ -198,6 +228,8 @@ if __name__ == "__main__":
                             print("Abuelo:", g.iso3 if g else None)
                             u = tree.get_uncle(node)
                             print("Tío:", u.iso3 if u else None)
+                        else:
+                            print("El país no está en el árbol.")
             except ValueError:
                 print("Año inválido.")
 
@@ -217,9 +249,8 @@ if __name__ == "__main__":
                     if n:
                         print(f"{i}. {iso} - {n.country} (media={n.mean:.2f})")
                     else:
-                        print(f"{i}. {iso}")
+                        print(f"{i}. {iso} - (no presente en árbol)")
 
-                # Permite ver detalles de un país
                 elegir = input("¿Desea seleccionar uno para ver detalles? (s/n): ").strip().lower()
                 if elegir == "s":
                     idx = int(input("Número del país: "))
@@ -234,6 +265,8 @@ if __name__ == "__main__":
                             print("Abuelo:", g.iso3 if g else None)
                             u = tree.get_uncle(node)
                             print("Tío:", u.iso3 if u else None)
+                        else:
+                            print("El país no está en el árbol.")
             except ValueError:
                 print("Valor inválido.")
 
@@ -242,10 +275,12 @@ if __name__ == "__main__":
             draw_tree(root, "avl_tree")
             print("Árbol exportado a avl_tree.png")
 
-
         # 0. Salir del programa
         elif opcion == "0":
             break
 
         else:
             print("Opción inválida.")
+
+
+
